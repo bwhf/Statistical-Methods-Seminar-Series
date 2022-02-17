@@ -16,12 +16,18 @@
 # packages
 pkgs <- c("here", "readr", "janitor", "mgcv", "gratia", "dplyr", "ggplot2",
           "ggrepel")
+
+for (pkg in c("here", "readr", "janitor", "mgcv", "gratia", "dplyr", "ggplot2",
+              "ggrepel")) {
+  install.packages(pkg, character.only = TRUE)
+}
+
 vapply(pkgs, library, logical(1L),
        character.only = TRUE, logical.return = TRUE)
 
 # data - from Seibold et al Nature 2019
 # https://doi.org/10.25829/bexis.25786-1.3.11
-seibold <- read_csv2(here("data/seibold-et-al/25786_3_data.csv"),
+seibold <- read_csv2(here("simpson-gams/data/seibold-et-al/25786_3_data.csv"),
                      col_types = "cccccdndddddcddnddcddcddcddnnnnnnnnnnnn")
 
 # basic data wrangling so we can plot
@@ -81,13 +87,19 @@ site <- seibold %>%
 m_site <- gam(abundance_identified ~ s(year), data = site,
               method = "REML", family = nb())
 
-summary(m_site) # model summary
+summary(m_site) # model summary #not a constant function hence very low p value in s(year)
 
 draw(m_site) # partial effect of smooth
+# y axis: zero = overall intersect of the model (average mean)
 
 appraise(m_site, method = "simulate") # model diagnostics
 
 k.check(m_site) # check basis size
+# k-index:
+## if k-index < 1, indicate that you might have set the basis too small
+## check p-value, see if it's close to being significant (< 0.05)
+## then if k is similar to degree of freedom
+## then k should be large
 
 site %>%
   add_residuals(m_site) %>%
@@ -165,7 +177,7 @@ draw(m4)
 system.time(
 m5 <- gam(abundance_identified ~ region + # regional means fixef
             s(year_f, bs = "re") + # year-to-year effects
-            s(year, by = region, k = 20) + # region-specific smooths
+            s(year, by = region) + # region-specific smooths
             s(year, plot_id, bs = "fs", k = 5), # plot-specific trends
           data = seibold,
           method = "REML",
@@ -173,7 +185,7 @@ m5 <- gam(abundance_identified ~ region + # regional means fixef
           control = ctrl)
   )
 
-# plot smooths
+ # plot smooths
 draw(m5)
 
 # model diagnostics
